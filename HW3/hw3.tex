@@ -1,0 +1,198 @@
+\documentclass[10pt]{article}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{commath}
+\usepackage{amsmath}
+\definecolor{mygreen}{RGB}{28,172,0} % color values Red, Green, Blue
+\definecolor{mylilas}{RGB}{170,55,241}
+\lstset{language=Matlab,%
+    %basicstyle=\color{red},
+    breaklines=true,%
+    morekeywords={matlab2tikz},
+    keywordstyle=\color{blue},%
+    morekeywords=[2]{1}, keywordstyle=[2]{\color{black}},
+    identifierstyle=\color{black},%
+    stringstyle=\color{mylilas},
+    commentstyle=\color{mygreen},%
+    showstringspaces=false,%without this there will be a symbol in the places where there is a space
+    numbers=left,%
+    numberstyle={\tiny \color{black}},% size of the numbers
+    numbersep=9pt, % this defines how far the numbers are from the text
+    emph=[1]{for,end,break},emphstyle=[1]\color{red}, %some words to emphasise
+    %emph=[2]{word1,word2}, emphstyle=[2]{style},    
+}
+\lstset{language=Matlab}
+\usepackage{indentfirst}
+\begin{document}
+\title{Amath 482 homework 3: Principal Component Analysis}
+\author{Andy Zhang}
+\maketitle
+
+\begin{abstract}
+This report demonstrates the application of Principal Component Analysis (PCA) on the Mass-Spring system videos, filmed by cameras from several angles in different cases, so that we can determine if redundancies exist and still capture the whole dynamic after dimension reduction. This can be done by applying Singular Value Decomposition (SVD) to the snapshot matrix of data.
+\end{abstract}
+
+\section{Introduction}
+PCA is an useful technique to extract low-dimension data from the dynamic, but not having to know the governing rules. Thus, it's a practical tool to deal with large amounts of real-world data. By performing PCA, we are able to extract the features and focus of the data and deal with them efficiently.
+\par
+\vskip 0.1cm
+Specifically in this report, we are going to check the feasibility of dimension reduction of the data from a Spring-Mass system, filmed by 3 cameras from different angles. Besides, 4 different situations are introduced: the ideal case, that the mass generally moves in z-direction; the noisy case that adds camera shakes to the ideal case; the horizontal displacement case that generates both the harmonic motion in z-direction and pendulum motion in x-y plane; and the last case, that adds rotation of the mass to the horizontal displacement case.
+
+\section{Theoretical Background}
+\subsection{Singular Value Decomposition (Full SVD)}
+SVD is an useful tool when performing dimension reduction, by decomposing any matrix into 2 orthogonal/unitary basis and 1 stretching/compressing matrix. It takes the form of:
+
+\begin{equation}\label{1}
+A=U \Sigma V^{*}
+\end{equation}
+where the $^{*}$ denotes the (conjugate) transpose of the basis $V$.
+\par
+\vskip 0.1cm
+For a $m*n$ size matrix $A$, both basis matrices $U$ and $V$ are unitary/orthogonal, with a size of $m*m$ and $n*n$ respectively. $\Sigma$ is a $m*n$ diagonal matrix with non-negative diagonal entries known as singular values, sorted from the largest to the smallest. Basically we can understand it as a basis being stretched/compressed and then being applied(rotated) due to another basis.
+
+
+\subsection{Principal Component Analysis (PCA)}
+As described in \textbf{Introduction}, PCA is often applied for dimension reduction of data, which knowing the governing rules is unnecessary. First, we rearrange the $x$ and $y$ coordinates of the mass generated from each video into a matrix:
+
+\begin{equation}\label{2}
+X=\left[
+\begin{aligned}
+x_a \\
+y_a \\
+x_b \\
+y_b \\
+x_c \\
+y_c \\
+\end{aligned}
+\right]
+\end{equation}
+where the number of columns denote the numbers of data points collected over time (in this case, the number of frames), and the number of rows represent the times of measurements. 
+\par
+\vskip 0.1cm
+We can further construct the covariance matrix $C_X$ showing the variances between every possible pair of data by:
+\begin{equation}\label{3}
+C_X = \frac{1}{n-1}XX^{T}
+\end{equation}
+where $\frac{1}{n-1}$ is for normalization. The covariance matrix $C_X$ is a square and symmetric matrix whose diagonal entries represent the variances of particular measurements and the off-diagonals denote the covariances between different measurements. Larger off-diagonals entries imply redundancy in our data.
+\par
+\vskip 0.1cm
+In order to get an ideal basis that all redundancies have been removed and the largest variances of particular measurements are ordered, the idea of SVD is applied. We first do SVD to $X$ and create a new basis:
+\begin{equation}\label{4}
+Y = U*X
+\end{equation}
+that represent the principal components projection. And for the variance of $Y$:
+\begin{equation} \label{5}
+C_Y=\frac{1}{n-1}YY^{T}=\frac{1}{n-1}\Sigma^{2}
+\end{equation}
+Thus, an ideal basis is constructed with only diagonal entries in the covariance matrix, that is, all redundancies between each data pairs are removed.
+
+
+\section{Algorithm Implementation and Development}
+\subsection*{Prepare data}
+To start with each case, I load the mat files of videos from three angles. Then I will call $[X(N), Y(N), \char`\~, frameNumN(N)] = size(vidFramesN_N)$ to find the sizes of videos, which are all 480 * 640, and the corresponding number of frames. We insert a $\char`\~$ at $Z$ values because it always generates 3 due to RGB scale of the videos. Since we will transfer the video to gray scale later, we don't need those $Z$ values. Then I watch each video and determine the approximate range of the paint can's movement.
+
+\subsection*{Trace the flashlight in each frame}
+For each frame of each video, I convert it from RGB to gray scale and the pixels to double precisions, which the largest value 255 represents white and smallest value 0 means black. Since the flashlight is the brightest point most of the time, I will trace it to get the position of the paint can in each frame. By observing each video and applying $pcolor$, we can get the movement interval of the paint can and then set what's outside of that interval to black (0 value), because the whiteboard and reflect light in the background will hinder us from locating the flashlight precisely. 
+\par
+\vskip 0.1cm
+Then, I will get the max value among all pixels in each frame and find a vector of coordinates that are larger than certain \textbf{threshold value} multiplies the max value. Averaging this vector gives a much more accurate x and y coordinate for each frame, since it can also average out outliers. Note that the x and y values from camera 3 have to be swapped because it's filming in a reverse angle.
+
+\subsection*{Organize the data}
+Since each video has different numbers of frames, I first rearrange each vector of coordinates so that the can starts from the highest point. Then I find the minimum length of vector among all data and cut off extras that exceed this length. This is an appropriate approach because the mass is in harmonic motion (and pendulum motion), and getting rid of extra data won't affect the pattern. I then plot the horizontal and vertical positions of the mass against each frame to test for different \textbf{threshold values} until the plot shows harmonic motions of the mass in all three angles. After arranging the data to a snapshot matrix \textbf{Mx}, I subtract mean from each row of data for normalization.
+
+\subsection*{Perform PCA on snapshot matrix}
+I then perform SVD on the snapshot matrix \textbf{Mx} divided by $\sqrt{n-1}$ for normalization, with matlab build-in command $[U, S, V] = svd(Mx, 'econ')$, and construct the principal component matrix $Y$ by multiplying $U$ with \textbf{Mx}. Following then I plot $Y$ against each frame so that I can get the normalized position controlled by each mode and check the feasibility of dimension reduction. The energy carried by each mode (totally 6) can also be found by dividing the corresponding singular value squared from the sum of all singular values squared.
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=0.175]{31.jpg}
+	\includegraphics[scale=0.175]{34.jpg}
+	\includegraphics[scale=0.175]{37.jpg}
+	\includegraphics[scale=0.2]{310.jpg}
+    \caption{The actual horizontal and vertical positions of the paint can in all videos}
+\end{figure}
+
+
+\section{Computational Results}
+\subsection*{The horizontal and vertical positions of the paint can from all videos}
+
+\begin{figure}[!h]
+	\includegraphics[width=0.5\textwidth]
+    {32.jpg}
+    \includegraphics[width=0.49\textwidth]
+    {33.jpg}
+	\caption{PCA and mode energy in ideal case}
+\end{figure}
+In \textbf{Figure 1}, the actual positions of all cases from all angles are shown. We can see that the mass is in vertical harmonic motion in all cases (except in noisy case) and in horizontal motions in case 3 and 4. 
+
+
+\subsection*{Results from ideal case}
+In the ideal case shown in \textbf{Figure 2}, we can clearly see that the first mode is strongly dominant, which takes more than 95$\%$ of the whole energy of the data. Thus, it's feasible and necessary for dimension reduction since we can also read from the left image that in general, the can is moving only in one direction(z-direction).
+
+\subsection*{Results from noisy case}
+Shown in \textbf{Figure 3}, the dominant mode only takes about 55$\%$ of the whole energy due to camera shakes, and four modes are needed to capture 95$\%$ of the whole dynamics. Thus, dimension reduction is not necessary because even the last two modes capture about 5$\%$ of the dynamics. In this case, PCA is not performing well as we can read from the left image of position.
+
+\begin{figure}[!h]
+	\includegraphics[width=0.5\textwidth]
+    {35.jpg}
+    \includegraphics[width=0.49\textwidth]
+    {36.jpg}
+	\caption{PCA and mode energy in noisy case}
+\end{figure}
+
+\begin{figure}[!ht]
+	\includegraphics[width=0.5\textwidth]
+    {38.jpg}
+    \includegraphics[width=0.49\textwidth]
+    {39.jpg}
+	\caption{PCA and mode energy in horizontal displacement case}
+\end{figure}
+\subsection*{Results from horizontal displacement case}
+In the horizontal displacement case, the paint can is not only moving in z-direction, but also in x-y plane. Thus, data from 2 different angles are necessary to capture both motions and what's shown in \textbf{Figure 4}, that 4 modes take approximately all energy in the dynamics makes sense. We can also see from the left image that mode 5 and 6 result in small variations in positions. So we can do dimension reduction in this case so that we capture the whole dynamic by using only two cameras.
+
+\begin{figure}[!b]
+	\includegraphics[width=0.5\textwidth]
+    {311.jpg}
+    \includegraphics[width=0.49\textwidth]
+    {312.jpg}
+	\caption{PCA and mode energy in horizontal displacement and rotation case}
+\end{figure}
+
+
+\subsection*{Results from horizontal displacement and rotation case}
+The last case is the horizontal displacement and rotation of the paint can. However, the can is in pendulum motion only in the first few frames (as shown in \textbf{Figure 1}). In the rest of the videos, the can is just in simple vertical harmonic motions. What the results shown in \textbf{Figure 5}, is that the first dominant mode takes 65$\%$ of the energy and only three modes are needed to represent the whole system. However, we are failing to capture the rotation of can due to fixed angles (linearity). So with that being said, we can do dimension reduction in this case but can only represent the pendulum and harmonic motions by applying a half of the data.
+
+\section{Summary and Conclusion}
+Through the application of PCA on the data in different cases, we can often extract the dominant components and check redundancy, like in the first and third cases. While in the noisy case, the camera shakes interfere with the performance of the PCA, and dimension reduction might be performed in this case only on the premise of applying methods that remove camera shakes; while in the rotation case, the largest singular value, which represents 65$\%$ of the dynamics is quite misleading due to the linearity of SVD methods, and thus, we fail to capture rotation through PCA.
+
+\section{Appendix A}
+\noindent
+\textbf{double(X)} returns the double precision of X. 
+\par
+\vskip 0.2cm
+\noindent
+\textbf{rgb2gray(X)} converts RGB image X to grayscale.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{find(M $>$ 0.95 * max)} finds all the pixels' positions with values that are larger than 95$\%$ of the max values of all pixels. 
+\par
+\vskip 0.2cm
+\noindent
+\textbf{mean(Mx, 2)} returns the mean values of Mx along 2 dimensions, that is, along each row of \textbf{Mx}.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{repmat(mu, 1, n)} creates a matrix with 1 * n copies of \textbf{mu}.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{[U, S, V] = svd(Mx, 'econ')} produces the economy size of SVD, which is efficient for a m-by-n matrix \textbf{Mx} that m $<$ n.
+
+\newpage
+
+\section{Appendix B}
+\lstinputlisting[language=Matlab]{HW3.m}
+
+
+\end{document}
