@@ -1,0 +1,181 @@
+\documentclass[10pt]{article}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{commath}
+\usepackage{amsmath}
+\definecolor{mygreen}{RGB}{28,172,0} % color values Red, Green, Blue
+\definecolor{mylilas}{RGB}{170,55,241}
+\lstset{language=Matlab,%
+    %basicstyle=\color{red},
+    breaklines=true,%
+    morekeywords={matlab2tikz},
+    keywordstyle=\color{blue},%
+    morekeywords=[2]{1}, keywordstyle=[2]{\color{black}},
+    identifierstyle=\color{black},%
+    stringstyle=\color{mylilas},
+    commentstyle=\color{mygreen},%
+    showstringspaces=false,%without this there will be a symbol in the places where there is a space
+    numbers=left,%
+    numberstyle={\tiny \color{black}},% size of the numbers
+    numbersep=9pt, % this defines how far the numbers are from the text
+    emph=[1]{for,end,break},emphstyle=[1]\color{red}, %some words to emphasise
+    %emph=[2]{word1,word2}, emphstyle=[2]{style},    
+}
+\lstset{language=Matlab}
+\usepackage{indentfirst}
+\begin{document}
+\title{Amath 482 homework 4: Music Classification}
+\author{Andy Zhang}
+\maketitle
+
+\begin{abstract}
+This report demonstrates the idea of Machine Learning on music classification, which is separated into 3 cases: Band Classification with different music genres, Band Classification with the same genre, and Genre Classification. To accomplish such goal, we are going to do spectrogram transform to our data first, then apply Principal Component Analysis (PCA) for dimension reduction and Linear Discriminant Analysis (LDA) to statistically determine threshold values. Finally, the result will be applied to new data to test the algorithm.
+\end{abstract}
+
+\section{Introduction}
+As described in the report from Homework 3, PCA is an useful technique to extract lower-dimension data from the dynamic. Since machine learning commonly deals with a bunch of similar data, applying PCA makes it much more efficient (referring to energy captured by each mode) and provides a matrix $U$ that we can project our data onto.
+\par
+\vskip 0.1cm
+LDA is based on the idea of projecting two sets of data onto a new bases that separate the inter-class distance to the max extent while making the intra-class data as compact as possible. The corresponding eigenvector of the maximum eigenvalue between the within-class variance $S_W$ and between-class variance $S_B$ will give us a good one to project onto.
+\par
+\vskip 0.1cm
+In this report, we are going to apply these techniques to several 5-seconds music clips for classification. In order to guarantee the success rate, different amounts of clips might be chosen for different cases, since it would definitely be harder to classify three artists performing the same genre than those performing different genres.
+
+\section{Theoretical Background}
+\subsection{Spectrogram transform}
+The spectrogram is the visual representation of the spectrum of frequencies along the signal verses time. We can extract time-frequency component of the music clips by simply using the Matlab built-in function:
+\begin{equation}\label{1}
+spectrogram(data(:, k))
+\end{equation}
+and then rearranging it into a single column vector that represents one specific music clip.
+
+
+\subsection{Principal Component Analysis (PCA)}
+Since we're dealing with similar spectrogram data that represent the frequency-time components of music clips, it's necessary and feasible to do PCA that helps dimension reduction, and thus making the algorithm much more efficient. PCA is based on the idea of singular value decomposition, as described in the report of \textbf{Homework 3}.
+
+
+\subsection{Linear Discriminant Analysis (LDA)}
+LDA is a statistic method that can classify different groups to the max extent. In this case of music classification, we have three groups of data, thus, we should apply formula of multi-group between-class variance $S_B$ by:
+
+\begin{equation}\label{2}
+S_B = \sum_{j=1}^{n}mj(\vec{\mu_j}-\vec{\mu})(\vec{\mu_j}-\vec{\mu})^T
+\end{equation}
+, where $n$ denotes the number of groups and $\vec{\mu}$ is the mean of all all $\vec{\mu_1}$ to $\vec{\mu_n}$. $mj$ is the size of each group. In this case, we're going to use same amount of clips from each artist, so we can omit it when calculating $S_B$.
+
+\par
+\vskip 0.1cm
+
+The within-class variance, $S_W$ can be computed by:
+\begin{equation}\label{3}
+S_W = \sum_{j=1}^{n} \sum_{\vec{x}} (\vec{x}-\vec{\mu_j})(\vec{x}-\vec{\mu_j})^T
+\end{equation}
+, where $\vec{x}$ represents each column vector of the projection onto principal component matrix for each group of the data.
+
+\par
+\vskip 0.1cm
+
+The projection vector $w$ is defined as:
+\begin{equation}\label{4}
+w = \arg\max_{w}\frac{w^TS_Bw}{w^TS_Ww}
+\end{equation}
+We can interpret it as the vector $w$ that maximizes the relation of $S_B$ over $S_W$. To find what the projection basis, $w$ exactly is, we can simply find the maximum eigenvalue and the corresponding eigenvector between $S_Bw$ and $S_Ww$, computed by:
+\begin{equation}\label{5}
+S_B\vec{w}=\lambda S_W\vec{w}
+\end{equation}
+\par
+\vskip 0.1cm
+Finally, we project the data onto vector $w$ and then need to find threshold values that help to distinguish between groups. We are going to choose the boundary values from each group and taking average of the closest two as thresholds. Since we are dealing with three data groups, two threshold values are then needed.
+
+
+
+
+
+\section{Algorithm Implementation and Development}
+\subsection*{Prepare data}
+To start with each case, I first load the .wav files as data for machine learning. Since the clips I choose are stereos, I then take the average and make them mono types. I set up a function called \textbf{prepareTest} that's able to do the procedures above.
+
+\subsection*{Do Spectrogram transform}
+Another function called \textbf{doSpec} is set up for this part. First, it will spectrogram transform each column vector of the given data, taking the absolute value, and then resize the result from a m*n matrix into a m*n by 1 column vector. This part ends up by arranging each column vector into a matrix called \textbf{spec}, with the size of m*n by the amount of .wav files chosen.
+
+
+\subsection*{Training the given data}
+First, we are going to choose an appropriate amount of features for dimension reduction by referring to the Energy-Mode plots for each of the three tests. Using the matrix \textbf{spec} and given feature number, we then do SVD to \textbf{spec} and choose feature amounts of columns of $U$ and feature amounts of rows of the principal component projection matrix $S*V^T$. 1/3 of the columns of $S*V^T$ are then distributed to corresponding artist. Using the mean-of-rows vector $\vec{\mu_j}$ of each matrix, we are able to perform LDA that generate three sorted projection vectors that are used for finding 2 threshold values. This part is also stored in a function called \textbf{trainer}.
+
+\subsection*{Test the algorithm on new data}
+To test the success rate of the algorithm, I choose one more clip of each used music for machine learning and two new clips that's not used for the algorithm. I then compute the exact labels for each of the music clip (3 being the artist with the largest mean value of the sorted projection vector, and 1 being the one with the least mean). To have the label generated by the algorithm, I first compute the spectrogram and project it onto matrix $U$ and vector $w$ following then. Naming the projection vector \textbf{pval}, I then call \textit{label = (pval $>$ threshold1) + (pval $>$ threshold2) + 1}. Subtracting this label vector from correct labels gives us a vector of either 0 or not. If an entry is not 0, that means we fail to classify that clip. Using functions \textbf{check} generates the label and \textbf{pval}, and \textbf{checkRate} gives us the success rate in each test.
+
+
+\section{Computational Results}
+\subsection*{Test 1 - Band classification with different genres}
+Three artists, Dan Bodan, Density $\&$ Time, Dan Lebowitz are chosen for this test, each performing classical, electronics, and folk musics. 9 clips are chosen from each artist (3 clips per music piece). While for the test data, 5 clips are chosen from each, with a fourth clip from each of the three pieces used as algorithm data and 2 clips from new pieces. 8 features are applied, which results in a success rate of 0.8667, that is, 13/15 being correct. What's wrongly classified are two clips from Dan Bodan's "National Express" and "Kallimachou", and they are mis-classified to be folk music from Dan Lebowitz. The reason might be that, these two pieces are composed with instruments that generate high-frequency sounds. Since I decrease the sampling rate to 11025 Hz, they may then have similar pitches as folk musics that are mostly played by guitars.
+
+\begin{figure}[!h]
+	\includegraphics[width=0.8\textwidth]
+    {Test1energy.jpg}
+	\caption{Energy captured by each mode in Test 1}
+\end{figure}
+
+\subsection*{Test 2 - Band classification with the same genre}
+The jazz $\&$ blues music pieces, from Quincas Moreira, Chris Haugen, and Freedom Trail Studio are used for this test. 4 clips from each of 4 pieces are chosen from each artist, which makes a total of 48 algorithm data. 6 clips from each artist (another 4 from the music pieces that are used as algorithm data and 2 from new pieces) are used for testing. In this case, I apply 20 features and the success rate is 0.7222, which means 13 out of 18 are rightly classified. The result tells us that 3 clips from Quincas Moreira and 2 from Freedom trauk studio are thought to be performed by Chris Haugen. In this case, this makes sense since jazz or blues are composed with similar chords.
+
+\begin{figure}[!ht]
+	\includegraphics[width=0.8\textwidth]
+    {Test2energy.jpg}
+	\caption{Energy captured by each mode in Test 2}
+\end{figure}
+
+
+\begin{figure}[!h]
+	\includegraphics[width=0.8\textwidth]
+    {Test3energy.jpg}
+	\caption{Energy captured by each mode in Test 3}
+\end{figure}
+
+\subsection*{Test 3 - Genre classification}
+In this case, 10 music clips are randomly chosen in the fields of Jazz $\&$ Blues, Electronics, and Punk. The test data are 4 new clips from each of the three genres. 8 features are used for the algorithm, yielding 0.8333 success rate, 10/12 being correct. One of jazz and one of electronics are thought to be punk, these two clips might also be wrongly classified due to the decreased sampling rate.
+
+
+
+\section{Summary and Conclusion}
+To sum up, we would see a much higher success rate when dealing with Band Classification (different genres) and Genre Classification than classifying different bands performing same genre of musics. We may also see a increase in all of the tests if we apply more input data and a higher sampling rate, however, this would also make our algorithm much slower, i.e, the tradeoff between efficiency and accuracy should be considered in the field of machine learning.
+
+\section{Appendix A}
+\noindent
+\textbf{function spec = doSpec(data)} returns the spectrogram of data with the right size.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{function file = prepareTest(clip)} reads stereo audio files and converts them to monos as a column vector.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{function sucRate = checkRate(M1, M2, M3, label)} checks means of each projection basis onto $w$ and provides us a correct label. It also gives us a success rate determined by correct label and label determined by the algorithm.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{function [label, pval] = check(U, w, threshold1, threshold2, spec)} takes two threshold values, $U$ and $w$ for projections, and the spectrogram of test data and returns generated label and \textbf{pval}.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{function [U, S, V, threshold1, threshold2, w, M1, M2, M3] = trainer(sp, feature)} is the training function for machine learning by performing PCA and LDA.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{S = spectrogram(data)} produces the spectrogram by using STFT.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{B = sort(A)} sorts A in ascending order.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{C = setdiff(A,B, 'rows')} returns the values in A that are not in B with no repetitions and C will be sorted in rows.
+
+\newpage
+
+\section{Appendix B}
+\lstinputlisting[language=Matlab]{HW4.m}
+
+
+\end{document}
