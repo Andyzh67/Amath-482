@@ -1,0 +1,256 @@
+\documentclass[10pt]{article}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{commath}
+\usepackage{amsmath}
+\definecolor{mygreen}{RGB}{28,172,0} % color values Red, Green, Blue
+\definecolor{mylilas}{RGB}{170,55,241}
+\lstset{language=Matlab,%
+    %basicstyle=\color{red},
+    breaklines=true,%
+    morekeywords={matlab2tikz},
+    keywordstyle=\color{blue},%
+    morekeywords=[2]{1}, keywordstyle=[2]{\color{black}},
+    identifierstyle=\color{black},%
+    stringstyle=\color{mylilas},
+    commentstyle=\color{mygreen},%
+    showstringspaces=false,%without this there will be a symbol in the places where there is a space
+    numbers=left,%
+    numberstyle={\tiny \color{black}},% size of the numbers
+    numbersep=9pt, % this defines how far the numbers are from the text
+    emph=[1]{for,end,break},emphstyle=[1]\color{red}, %some words to emphasise
+    %emph=[2]{word1,word2}, emphstyle=[2]{style},    
+}
+\lstset{language=Matlab}
+\usepackage{indentfirst}
+\begin{document}
+\title{Amath 482 homework 5: Neural Networks for Classifying Fashion MNIST}
+\author{Andy Zhang}
+\maketitle
+
+\begin{abstract}
+This report demonstrates the classification of fashion MNIST dataset using neural networks. It is separated into 2 parts: using only fully-connected neural networks and additionally using convolutional neural networks. To generate a network that is not only accurate in training data, but also in validating and test data, we are going to adjust on various hyper parameters.
+\end{abstract}
+
+\section{Introduction}
+Since the development of technology brings increasing amount of image data, neural network is then a good tool for classifying them. In this report, we are going to focus on classification of fashion MNIST dataset, with 10 different classes of fashion items: 0-T-shirt, 1-Trouser, 2-Pullover, 3-Dress, 4-Coat, 5-Sandal, 6-Shirt, 7-Sneaker, 8-Bag, and 9-Ankle Boot being defined respectively.
+\par
+\vskip 0.2cm
+In this report, we are going to analyse on 55,000 training data and apply the neural network on 5,000 validating data. If we've got a good result, then this model is then applied to 10,000 test data. In order not to over-fit the data, that is, the loss on training data is significantly less than that of validating and test data, we have to choose proper \textbf{L2 Regularization} value, and add the two-norm squared of the weight vector $\vec{w}$ multiplies \textbf{L2 Regularization} to the loss function. Other ways including reducing widths of neurons and using larger data set could also be considered.
+
+\section{Theoretical Background}
+\subsection{Artificial Neural Network}
+Artificial Neural Network is the computing system inspired by the biological neural network in animal brains. It's based on collection of neurons that transmit information to each other, like those in animal brains. Applying artificial neural networks aimed to solve problems same as a human would do when classifying and currently is used in broader fields.
+\par
+\vskip 0.2cm
+The output of the neural network is computed by non-linear functions that considers the dot product of input and weight vectors, adding bias, against threshold values. If we add several hidden layers between the input and output, then a deep learning neural network can be created.
+
+
+\subsection{Fully connected neural network}
+Fully connected neural networks are broadly applicable, but may perform more weakly than the convolutional neural networks. It consists of several layers that all of the neurons are fully connected. We may define the output $\vec{y}$ from input $\vec{x}$ by:
+\begin{equation}\label{1}
+\vec{y} = \sigma (A \vec{x} + \vec{b})
+\end{equation}
+, where $A$ denotes the matrix that contains all weights from input to output and $b$ means the added bias. The function $\sigma$ is a step function that checks if the weighted sum is larger than the threshold or not.
+\par
+\vskip 0.2cm
+If we're using a deep-learning neural network with one hidden layer, we would have it defined as:
+\begin{equation}\label{2}
+\vec{y} = \sigma (A_2\sigma (A_1 \vec{x_1} + \vec{b_1} + \vec{b_2})
+\end{equation}
+. If we are dealing with more hidden layers, then we can just apply it for several times.
+\par
+\vskip 0.2cm
+We use width and depth to represent the number of neurons per layer and number of layers respectively, and they are called hyper parameters of the network.
+
+
+\subsection{Convolutional neural network}
+A convolutional neural network (CNN) is a kind of deep learning neural network that are mostly applied to analyse images, which matches the goal of this homework: imagery classification. Unlike fully-connected neural network that may easily run into over-fitting, we may take advantage of the multi-layer pattern of CNN and combine simpler features to form complex features. Since the same weight matrix is used for all neurons in the same layer, the result should be similar to the original image data but only slightly shifted so that we won't lose information. This weight matrix is called a filter and we call layer of neurons the feature map.
+\par
+\vskip 0.2cm
+We may operate on more parameters when using CNN, including the size and number of filters, the stride (distance to shift on the receptive field), padding, pooling methods, and pool sizes. Padding can help to generate the same size layer from the image and pooling allows us to subsample the layer. A commonly-used CNN structure is Lenet-5 that first implements the alteration between convolution layer and subsampling, then it uses a few fully-connected layers for classification.
+
+
+
+
+\section{Algorithm Implementation and Development}
+\subsection*{Part 1 Fully-connected neural network}
+\subsection*{Prepare data}
+We are going to use a fully-connected neural network for image classification in part 1. To start with it, we load the dataset of fashion MNIST, then reshape and permute it in the order we want. We choose the first 5,000 out of the 60,000 pieces of data as validation and the rest 55,000 for training. We should also call the built-in \textbf{categorical} function to the output to make them categorical data.
+
+\subsection*{Choose different parameters}
+I tried to adjust on the depth, width, learning rate, and L2 regularization, max epochs in this part. First, I use the three-layer structure from the \textbf{MNIST-Classifier} code and it results in an accuracy about 87$\%$ on validating data. I then change the width to be 500, which is about 2/3 of the input size and change its depth to be 3, accompanied with RELU activation function. The resulting 5-layer structure (500-500-500-100-10) improves the accuracy for a bit.
+\par
+\vskip 0.1cm
+Then I notice the accuracy still shows increasing trend in epoch 5 so I increase the max epochs to 8 and decrease the Learning rate to 1e-4 correspondingly. To avoid over-fitting, I increase L2 Regularization to 1e-3. Searching on different optimizers tells that Adam ranks the top so I continue to use it.
+
+
+\subsection*{Part 2 Convolutional neural network}
+\subsection*{Prepare data}
+I apply the same procedure as in \textbf{Part 1}.
+
+\subsection*{Choose different parameters}
+In this case, I tried on adjusting number of filters, filter size, strides, pool size, and those tried in \textbf{Part 1}. Likewise, I try the conventional Lenet-5 structure at first and it results in about 88$\%$ accuracy. I then choose the same L2 Regularization but a Learning rate of 1e-3. I also try on different activation functions and find out that hyperbolic tangent seems to perform the best. Increasing the number of filters doesn't really improve accuracy, but slows down my algorithm significantly so I use the same structure as Lenet-5. Besides, changing the stride doesn't affect the result a lot.
+\par
+\vskip 0.2cm
+To get a good result on accuracy, I decrease the filter size to 3*3 and increase the number of filters to 32, 64, and 128 for the 3 convolution layers. A max pooling layer is used instead of average pooling to extract the characteristic values, with pool size of 3*3. I also add a batch Normalization Layer and then use hyperbolic tangent activation function. Then I add two fully-connected layers at last, with width of 100 and apply RELU activation function instead.
+
+
+
+\section{Computational Results}
+\subsection*{Part 1 Fully-connected neural network}
+Using the hyper parameters mentioned in \textbf{Algorithm Implementation and Development}, a result shown in \textbf{Figure 1} below is generated,
+\begin{figure}[!h]
+	\center
+	\includegraphics[width=0.8\textwidth]
+    {51.jpg}
+	\caption{Training Progress of Fully-connected NN}
+\end{figure}
+which seems to be the best of all attempts. It reaches 89.2$\%$ on validation data and there's not excessive over-fitting by checking on the accuracy and loss.
+\begin{figure}[!h]
+	\center
+	\includegraphics[width=0.45\textwidth]
+    {52.jpg}
+	\includegraphics[width=0.45\textwidth]
+    {53.jpg}
+	\caption{Confusion matrix of Training data (left) and Validating data (right)}
+\end{figure}
+\par
+\vskip 0.2cm
+Looking into the confusion matrix of training and validating data that are shown in \textbf{Figure 2}, in which we can see 1.6$\%$ difference in the generated neural network. Besides, we can see that shirts and T-shirts, coats and pullovers are commonly misclassified.
+\par
+\vskip 0.2cm
+Applying this network onto the testing data yields an accuracy of only 88$\%$, which is a little worse than I expect from the validating data. We can see that it only gets 84.1$\%$ correct on T-shirts (0), 76.7$\%$ on pullovers (2), 82.9$\%$ accurate on coats (4), and 68.2 $\%$ on shirts (6). This makes sense because these tops look similar to each other on a 28 pixels*28 pixels image.
+\begin{figure}[!h]
+	\center
+	\includegraphics[width=0.8\textwidth]
+    {54.jpg}
+	\caption{Confusion matrix of Testing data}
+\end{figure}
+
+\begin{figure}[!h]
+	\center
+	\includegraphics[width=0.8\textwidth]
+    {55.jpg}
+	\caption{Training Progress of CNN}
+\end{figure}
+
+\subsection*{Part 2 Convolutional neural network}
+While using the convolutional neural network, we would see noticeable increase in accuracy, shown in \textbf{Figure 4}. Though we may see slight over-fitting in epoch 7 and 8, it guarantees a validation accuracy of about 92.3$\%$.
+
+\begin{figure}[!h]
+	\center
+	\includegraphics[width=0.45\textwidth]
+    {56.jpg}
+	\includegraphics[width=0.45\textwidth]
+    {57.jpg}
+	\caption{Confusion matrix of Training data (left) and Validating data (right)}
+\end{figure}
+\noindent
+\par
+\vskip 0.2cm
+The confusion matrix of training and validating data are shown below in \textbf{Figure 5}, we may see 94.9$\%$ and 92.3$\%$ accurate on training and validating data, which implies some over-fitting. However, there's significant increase in accuracy of the tops mentioned above besides shirts (6).
+
+\begin{figure}[!t]
+	\center
+	\includegraphics[width=0.8\textwidth]
+    {58.jpg}
+	\caption{Confusion matrix of Testing data (CNN)}
+\end{figure}
+\par
+\vskip 0.2cm
+Using CNN instead, the result on testing data shown in \textbf{Figure 6} looks much better than that of fully-connected NN and reaches 92$\%$ accuracy. And of all 10 categories, the accuracy either improves or remains the same. However, this model is still having some difficulties in accurately classifying shirts (only 75.2$\%$ correctly classified).
+
+\section{Summary and Conclusion}
+To conclude, CNN performs much better in imagery classification than only using fully-connected neural networks. The results shown in this report may be further improved by applying more complicated structures, which could make the algorithm much more slower. Thus, the tradeoff between efficiency and accuracy should be considered before implementing the structure.
+
+
+
+
+
+\newpage
+\section{Appendix A}
+\noindent
+\textbf{xtrain = permute(xtrain, order)} changes xtrian in the given order.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{layer = imageInputLayer(inputSize)} defines an image input layer. InputSize is the size of the input images for the layer.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{categorical()} creates an categorical array from cell array.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{layer = fullyConnectedLayer(outputSize)} creates a fully connected
+    layer. OutputSize specifies the size of the output for the layer. A
+    fully connected layer will multiply the input by a matrix and then add
+    a bias vector.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{layer = reluLayer()} creates a rectified linear unit layer. This type of
+    layer performs a simple threshold operation.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{options = trainingOptions(solverName)} creates a set of training options
+    for the solver specified by solverName.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{trainedNet = trainNetwork(xtrain, ytrain layers, options)} trains and returns a
+    network trainedNet for a classification problem. xtrain and ytrain are input data for training, layers is an array of network
+    layers, and options is a set of training options.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{CLASS = classify(trainedNet, xtrain)} classifies each row of the xtrain data according to trained network.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{plotconfusion(targets,outputs)} plots a confusion matrix, using target
+  (true) and output (predicted) labels. Specify the labels as categorical
+  vectors.
+  \par
+\vskip 0.2cm
+\noindent
+\textbf{layer = convolution2dLayer(filterSize, numFilters)} creates a layer
+    for 2D convolution. filterSize specifies the height and width of the
+    filters and numFilters denotes the number of filters applied.
+     \par
+\vskip 0.2cm
+\noindent
+\textbf{layer = maxPooling2dLayer(poolSize)} creates a layer that performs max
+    pooling.
+         \par
+\vskip 0.2cm
+\noindent
+\textbf{layer = tanhLayer()} creates a hyperbolic tangent layer.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{layer = softmaxLayer()} creates a softmax layer. This layer is
+    useful for classification problems.
+    \par
+\vskip 0.2cm
+\noindent
+\textbf{layer = classificationLayer()} creates a classification output layer for
+    a neural network. The classification output layer holds the name of the
+    loss function that is used for training the network, the size of the
+    output, and the class labels.
+
+
+
+
+
+
+\newpage
+
+\section{Appendix B}
+\lstinputlisting[language=Matlab]{HW5.m}
+
+
+\end{document}
