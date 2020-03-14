@@ -1,0 +1,211 @@
+\documentclass[10pt]{article}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{commath}
+\definecolor{mygreen}{RGB}{28,172,0} % color values Red, Green, Blue
+\definecolor{mylilas}{RGB}{170,55,241}
+\lstset{language=Matlab,%
+    %basicstyle=\color{red},
+    breaklines=true,%
+    morekeywords={matlab2tikz},
+    keywordstyle=\color{blue},%
+    morekeywords=[2]{1}, keywordstyle=[2]{\color{black}},
+    identifierstyle=\color{black},%
+    stringstyle=\color{mylilas},
+    commentstyle=\color{mygreen},%
+    showstringspaces=false,%without this there will be a symbol in the places where there is a space
+    numbers=left,%
+    numberstyle={\tiny \color{black}},% size of the numbers
+    numbersep=9pt, % this defines how far the numbers are from the text
+    emph=[1]{for,end,break},emphstyle=[1]\color{red}, %some words to emphasise
+    %emph=[2]{word1,word2}, emphstyle=[2]{style},    
+}
+\lstset{language=Matlab}
+\usepackage{indentfirst}
+\begin{document}
+\title{Amath 482 homework 2: Gabor Transform}
+\author{Andy Zhang}
+\maketitle
+
+\begin{abstract}
+This report demonstrates the applications of Gabor Transform, a way to discrete the original data into windows that hold information in both spatial / time and frequency domains. Specifically, we're going to focus on the time-frequency analysis of music pieces Handel's Messiah and Mary had a little lamb.
+\end{abstract}
+
+\section{Introduction}
+The time-frequency analysis in this report is based on Gabor Transform, which allows us to demonstrate information in both frequency and time domains.
+\par
+
+In the first part of this report, we're going to explore on how different parameters, including the window width of Gabor Transform, translation of windows in time domain, and three commonly-used wavelet functions for Gabor Transform, change the resolution of time and frequency data of a music piece of Handel's Messiah. 
+\par
+
+In part two, a Gaussian function is applied to music pieces of Mary had a little lamb played by piano and recorder to do time-frequency analysis so that we can determine the different frequencies and music scores played by different musical instruments.
+
+
+\section{Theoretical Background}
+\subsection{Gabor Transform}
+Since time-series analysis and Fourier Transform can only focus in a specific domain, such limitations brought into the idea of Gabor Transform, a modification that can extract both time and frequency information. It's defined as:
+
+\begin{equation}\label{1}
+\mathcal{G}[f](t,\omega) = \tilde{f}_g(t,\omega) = \int_{-\infty}^{\infty}f(\tau)\bar{g}(\tau-t)e^{-i\omega\tau} d\tau = (f, \bar{g}_{t,\omega})
+\end{equation}
+where the bar denotes the complex conjugate of the function, thus, the function $g(\tau-t)$ acts as a window of data at each instant time and information outside the window are filtered out. The integration over the parameter $\tau$ slides this window over the time domain so that the frequency information is extracted.
+\par
+We always face the trade-off between resolutions of time and frequency. Increasing the width of window results in a better frequency resolution and a worse time resolution; narrowing the window does the opposite.
+
+
+
+\subsection{Wavelet}
+The idea of wavelets is introduced to gain perfect time and frequency resolutions by modifying the window size, that is, we can extract low-frequency components by using a wide scaling window and through successively narrowing of our window, higher-frequency details and better time-resolution are extracted. The mother wavelet function is defined as:
+\begin{equation}\label{2}
+\psi_{a,b}(t)=\frac{1}{\sqrt{a}}\psi(\frac{t-b}{a})
+\end{equation}
+where $a\neq0$ and $b$ are real constants. The scaling parameter $a$ controls the successively changing window width and translation parameter $b$ moves our window along the signal.
+\par
+
+In Part 1, three commonly-used wavelets are applied, which are:
+\subparagraph{Gaussian window}
+The simplest wavelet among the three, it's defined as:
+\begin{equation}\label{3}
+g(t-\tau) = e^{-a(t-\tau)^2}
+\end{equation}
+with window width of $a$ (the size of $a$ is directly proportional to the time resolution due to narrower window width) and the centered time $\tau$ along the signal.
+\vskip 0.2cm
+\subparagraph{Mexican hat window}
+The Mexican hat window is the negative normalized second derivative of a Gaussian function. It's more commonly used due to its excellent localization properties in both time and frequency space. The function of Mexican hat window is applied as:
+\begin{equation}\label{4}
+\psi(t)=\frac{2}{\sqrt{3\sigma}\pi^{1/4}}(1-(\frac{t-\tau}{\sigma})^2)e^{(-\frac{(t-\tau)^2}{2\sigma^2})}
+\end{equation}
+where $\tau$ is still the centered time and $\sigma$ being the window width. As you may notice, $\sigma$ is always at the denominator, as a result, a small $\sigma$ creates a narrow window and a better resolution in time domain.
+\vskip 0.2cm
+\subparagraph{Shannon window}
+The idea of Shannon window is that, it eliminates all information outside the window and keeps what's inside the same. To accomplish that, we can use a gate function:
+\begin{equation}\label{5}
+\psi(t)=
+\begin{cases}
+0 &\text{if \abs{t-\tau} $\geq$ a} \\
+1 &\text{if \abs{t-\tau} $<$ a} \\
+\end{cases}
+\end{equation}
+that creates a window width of 2$a$ around centered time $\tau$. The size of $a$ is directly related with window width and better time resolution.
+
+\par
+\vskip 0.5cm
+
+\subsection{Spectrogram}
+The spectrogram is the visual representation of the spectrum of frequencies along the signal verses time. We can intuitively view time-frequency information and do analysis with the help of spectrogram.
+
+\section{Algorithm Implementation and Development}
+\part{}
+\subsection*{Prepare for Gabor Transform}
+To start with, I load the music piece and get its sample rate and amplitude information with 73113 nodes. Due to the periodic boundary conditions, I remove the last amplitude detail. After dividing the 73112 nodes by the sample rate, I round the result to 9 seconds and name it \textbf{L}. Then I rescale the frequencies \textbf{k} by $2{\pi}/L$ because Fast Fourier Transform assumes $2{\pi}$ periodic signals and the domain ranges from 0 to $L$, that is a total $L$ units long. I also \textbf{fftshift()} the frequencies so that the zero frequency is staying at the middle of the array. 
+\vskip 0.5cm
+
+\subsection*{Explore on the parameter of window width, translation of time, and different window types}
+I create an array \textbf{tslide} from 0 to \textbf{L}, with a step of 0.1 because this step is appropriate for the total length of \textbf{L}. Then I test on four different widths of 1, 5, 25, 50. Since we're dealing with Gaussian window in this part, so the larger of width parameter, the better resolution we get about time and worse about frequency.
+Then I substitute each width into the function and multiply it with the amplitude data \textbf{v} and do Fourier Transform, the result is called \textbf{vgt}. I build a matrix called $vgtspec$ that holds information of the absolute value of fft-shifted \textbf{vgt} at every time step. Next, I can create a spectrogram for each of the width above by calling $pcolor(tslide, ks, vgt spec.')$, where $ks$ is the shifted frequency and $vgt spec.'$ denotes the transpose of the matrix. These spectrograms are shown below in \textbf{Computational Results}.
+\par
+\vskip 0.1cm
+Applying the same idea as above, I set the width to be 25 since it produces the spectrogram that demonstrates both time and frequency information best among the four. Then I create different \textbf{tslides}, all ranging from 0 to \textbf{L}, with different time steps of 0.05, 0.1, 0.5, and 1.5. Applying the same method as above, I create another four spectrograms. Different \textbf{tslides} cause the problems of oversampling (too small time step) and undersampling (too large time step), which will be further discussed in \textbf{Computational Results}.
+\par
+\vskip 0.1cm
+I apply the ideal width of 25 and ideal translation period of 0.1 second in this scenario for Gaussian window. By applying the functions of Mexican hat window and Shannon window to the amplitude data, I create their respective spectrograms after several attempts to find the ideal parameters. I also plot each window with the amplitude plot so that we can intuitively view their shapes and understand how they filter out data.
+
+
+
+
+\part{}
+\subsection*{Prepare for Gabor Transform}
+To start with, I load the music pieces of Mary had a little lamb played by piano and recorder. Applying similar idea as the preparation for \textbf{Part one} except removing the last amplitude detail because the data don't show periodic boundary condition. I also round the length of piano recoding to 16 seconds (exact duration about 15.9 seconds) and that of recorder to 14.2 seconds. Note that since we're dealing with sound data, we need the frequencies in unit of hertz, so we have to rescale the frequencies \textbf{k} by $1/L$ instead of $2\pi/L$ because that will end up with frequencies in unit of radian.
+\begin{figure}[!hb]
+	\includegraphics[scale=0.175]{21.jpg}
+    \caption{Spectrograms generated by Gaussian window with fixed time step and different width}
+    \centering
+\end{figure}
+\subsection*{Frequency plot, spectrogram, and identify music notes}
+Using the same method described in \textbf{Part one}, I create a spectrogram for music pieces played by each of the instruments by applying a Gaussian window with width parameter of 30 and a time step of 0.1. Additionally, I find the \textbf{index} of the maximum element in \textbf{vgt} at each time step, similar to the method applied in \textbf{An Ultrasound Problem}, so that I can find the center frequency at each time step in \textbf{k} with corresponding index. By doing this, we can filter out the overtone and get a clean graph of frequencies. A matrix named \textbf{frequency} is created to store the center frequency along \textbf{L}.
+\par
+As you may notice, the signal shown in spectrogram is intermittent and that can tell us the total number of notes being played or the duration of notes. By corresponding each separated note in spectrogram with the frequencies shown in frequency plot, we can identify the notes being played with the help of a musical scale.
+
+
+
+\section{Computational Results}
+\subsection*{Part 1}
+Figure 1 shows how different width parameters affect the spectrogram. On top left when $a$ = 1, we can hardly tell any change of frequency in time space; while the image on bottom right gives perfect resolution in time but almost no changes in frequency ($a$ = 50). The image on bottom left seems to be a good one since it shows good resolution of time and we can notice changes in frequency space. So 25 seems to be a good choice of Gaussian window width.
+
+\begin{figure}[!h]
+	\includegraphics[scale=0.175]{22.jpg}
+    \caption{Spectrograms generated by Gaussian window with fixed width and different time step}
+\end{figure}
+Figure 2 shows how spectrogram is changed with same width of 25 and different time steps. While t step is too small like 0.05, we face "oversampling", that is, we've already had a good spectrogram so that we don't need to further decrease t step. If t step is too small, it's inefficient to go through loops. On the other hand, if t step is too large like 1.5, we can notice that we've got bad resolutions in frequency and time spaces because the step size is far larger than the window size and thus we lose data. And this is the problem of "undersampling". Among the four images, having the translation step as 0.1 is a good choice.
+
+\begin{figure}[ht]
+	\includegraphics[width=0.5\textwidth]
+    {23.jpg}
+    \includegraphics[width=0.49\textwidth]
+    {24.jpg}
+	\caption{Spectrograms generated by different windows}
+\end{figure}
+On the left of Figure 3 demonstrates how different windows generate different spectrograms. With the choice of 0.25 as width and a translation period of 0.1, Mexican hat window creates much better frequency resolution than applying Gaussian window. The Shannon window shows better resolution in time space. \par
+On the right shows how these windows differ in shapes when being applied to the data.
+
+
+\subsection*{Part 2}
+\subsection*{The case of piano}
+\begin{figure}[ht]
+	\includegraphics[width=0.4\textwidth]
+    {25.jpg}
+    \includegraphics[width=0.4\textwidth]
+    {26.jpg}
+	\caption{Spectrogram and frequency plot of the piano}
+\end{figure}
+\begin{figure}[ht]
+	\includegraphics[width=0.4\textwidth]
+    {27.jpg}
+    \includegraphics[width=0.4\textwidth]
+    {28.jpg}
+	\caption{Spectrogram and frequency plot of the recorder}
+\end{figure}
+On the left of Figure 4, the spectrogram shows that there are totally 26 notes being played and we can then find their corresponding frequencies on the frequency plot. Thus, we know the music scores are:   \textbf{E D C D E E E D D D E E E E D C D E E E E D D E D C}.
+
+\subsection*{The case of recorder}
+As the spectrogram of Figure 5 shows, there are also 26 notes being played and through referring to the frequency plot, we know the music scores are approximately: \textbf{B A G A B B B A A A B B B B A G A B B B B A A B A G} since the frequencies are a little higher than these scores.
+
+
+\section{Summary and Conclusion}
+To sum up this report, we should know how different parameters, including window width, translation period, and window types, change the result of the spectrogram. We should know to choose proper window types and are able to find ideal values of parameters in all kinds of situations. Besides, we should know to filter out overtones by finding central frequencies and read from spectrograms. One should be capable to do time-frequency analysis after reading this report.
+
+
+\section{Appendix A}
+\noindent
+\textbf{vt = fft(v)} returns the Fourier Transform of a vector v.\par
+\vskip 0.2cm
+\noindent
+\textbf{ks = fftshift(k)} rearranges the frequency data by shifting the zero frequency component to the middle of the array. 
+\par
+\vskip 0.2cm
+\noindent
+\textbf{y = audioread('music.wav')} reads data from the file named music.wav. \par
+\vskip 0.2cm
+\noindent
+\textbf{pcolor(tslide, ks, vgt spec} creates a pseudocolor plot of matrix vgt spec on the grid defined by tslide and ks.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{colormap(hot)} sets the current figure's colormap to hot.
+\par
+\vskip 0.2cm
+\noindent
+\textbf{shading interp} sets the current shading to interpolated.
+
+\newpage
+
+\section{Appendix B}
+\lstinputlisting[language=Matlab]{HW2.m}
+
+
+
+
+
+
+\end{document}
