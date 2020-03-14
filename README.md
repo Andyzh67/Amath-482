@@ -1,2 +1,3 @@
-# UW-assignment
-contains assignments/projects at UW washington needed to be uploaded to Github
+# Amath 482 at University of Washington: Computational Methods for Data Analysis
+including all 5 reports and corresponding Matlab codes
+
